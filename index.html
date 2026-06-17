@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>대구기지 순환버스</title>
+  <script async src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif;background:#f0f2f5;color:#222;min-height:100vh}
+
+    .header{background:linear-gradient(135deg,#1a3a6b,#2563b0);color:white;padding:16px 16px 12px;text-align:center;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+    .header h1{font-size:17px;font-weight:700}
+    .live-time{font-size:26px;font-weight:200;margin-top:4px;letter-spacing:2px}
+    .live-date{font-size:11px;opacity:.75;margin-top:2px}
+
+    .day-toggle{display:flex;background:white;border-bottom:1px solid #e5e7eb}
+    .day-toggle button{flex:1;padding:13px 4px;border:none;background:none;font-size:15px;color:#888;cursor:pointer;border-bottom:3px solid transparent;font-weight:500}
+    .day-toggle button.active{color:#1a3a6b;border-bottom-color:#1a3a6b;font-weight:700}
+
+    .dir-wrap{padding:12px 14px 4px}
+    .dir-toggle{display:flex;background:#e8ecf4;border-radius:10px;padding:4px;gap:4px}
+    .dir-toggle button{flex:1;padding:9px 4px;border:none;background:none;border-radius:7px;font-size:12px;color:#666;cursor:pointer;font-weight:500;line-height:1.4}
+    .dir-toggle button.active{background:white;color:#1a3a6b;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+    .dir-toggle button span{display:block;font-size:10px;opacity:.7}
+
+    .route-info{margin:8px 14px 8px;background:#e8f0fe;border-radius:8px;padding:8px 12px;font-size:11px;color:#1a3a6b;line-height:1.6}
+
+    .stop-wrap{padding:0 14px 10px}
+    .stop-wrap label{font-size:12px;color:#888;display:block;margin-bottom:5px}
+    .stop-wrap select{width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:9px 12px;font-size:14px;color:#222;background:white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 12px center;appearance:none}
+
+    .list{padding:0 14px 90px}
+    .sec-label{font-size:11px;color:#999;padding:10px 2px 5px;font-weight:600;letter-spacing:.4px}
+
+    .card{background:white;border-radius:12px;margin-bottom:9px;box-shadow:0 1px 4px rgba(0,0,0,.07);border:1.5px solid transparent;overflow:hidden}
+    .card.next{border-color:#1a3a6b;box-shadow:0 2px 12px rgba(26,58,107,.15)}
+    .card.passed{opacity:.4}
+
+    .card-top{display:flex;align-items:center;padding:12px 14px 8px;gap:10px;flex-wrap:wrap}
+    .badge{background:#1a3a6b;color:white;border-radius:5px;padding:3px 9px;font-size:12px;font-weight:700;flex-shrink:0}
+    .badge.cm{background:#e67e22}
+    .badge.ex{background:#8b5cf6}
+    .dep{font-size:24px;font-weight:700;flex:1;letter-spacing:-1px}
+    .next-pill{background:#1a3a6b;color:white;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px}
+    .mins{font-size:11px;color:#1a3a6b;font-weight:600}
+
+    /* scrollable stops row */
+    .stops-row{overflow-x:auto;padding:2px 14px 12px;-webkit-overflow-scrolling:touch}
+    .stops-row::-webkit-scrollbar{display:none}
+    .stops-inner{display:flex;min-width:max-content;gap:0}
+    .st{text-align:center;width:52px;flex-shrink:0}
+    .st-name{font-size:9px;color:#aaa;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px}
+    .st-row{display:flex;align-items:center}
+    .st-line{flex:1;height:2px;background:#e5e7eb}
+    .st-line.none{background:transparent}
+    .st-dot{width:8px;height:8px;border-radius:50%;background:#d1d5db;flex-shrink:0}
+    .st-dot.on{background:#1a3a6b}
+    .st-dot.me{background:#f59e0b;width:10px;height:10px}
+    .st-dot.skip{background:#f5f5f5;border:1px dashed #ccc}
+    .st-time{font-size:10px;font-weight:600;color:#444;margin-top:3px}
+    .st-time.nil{color:#ddd}
+
+    /* QR */
+    .qr-btn{position:fixed;bottom:20px;right:20px;z-index:200;background:#1a3a6b;color:white;border:none;border-radius:50%;width:54px;height:54px;font-size:22px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center}
+    .qr-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:center;justify-content:center}
+    .qr-overlay.show{display:flex}
+    .qr-box{background:white;border-radius:16px;padding:24px 20px 18px;text-align:center;max-width:300px;width:90%}
+    .qr-box h2{font-size:16px;margin-bottom:6px;color:#1a3a6b}
+    .qr-box p{font-size:12px;color:#888;margin-bottom:14px;line-height:1.5}
+    #qrcode{display:flex;justify-content:center;margin-bottom:12px}
+    .qr-url{font-size:10px;color:#555;word-break:break-all;background:#f5f5f5;border-radius:6px;padding:7px;margin-bottom:12px}
+    .qr-warn{font-size:11px;color:#e67e22;margin-bottom:8px}
+    .qr-close{background:#1a3a6b;color:white;border:none;border-radius:8px;padding:10px 32px;font-size:14px;cursor:pointer;font-weight:600}
+
+    .note{margin:0 14px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 12px;font-size:11px;color:#92400e;line-height:1.6}
+    .empty{text-align:center;padding:40px 20px;color:#bbb;font-size:14px}
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🚌 대구기지 순환버스</h1>
+  <div class="live-time" id="lt">00:00</div>
+  <div class="live-date" id="ld"></div>
+</div>
+
+<div class="day-toggle">
+  <button class="active" onclick="setDay('wd')">평일</button>
+  <button onclick="setDay('hd')">휴무일</button>
+</div>
+
+<div class="dir-wrap">
+  <div class="dir-toggle">
+    <button class="active" id="btn-cw" onclick="setDir('cw')">시계방향 ↻<span id="sub-cw"></span></button>
+    <button id="btn-ccw" onclick="setDir('ccw')">반시계방향 ↺<span id="sub-ccw"></span></button>
+  </div>
+</div>
+
+<div class="route-info" id="ri"></div>
+
+<div class="stop-wrap">
+  <label>📍 내 출발 정류장</label>
+  <select id="ss" onchange="render()"></select>
+</div>
+
+<div class="list" id="list"></div>
+
+<div class="note">
+  <strong>방촌문 개방시간</strong> &nbsp;|&nbsp; 평일: 06:00~09:00 / 11:30~13:00 / 17:00~24:00 &nbsp;|&nbsp; 휴일: 07:00~24:00
+</div>
+
+<button class="qr-btn" onclick="showQR()">📲</button>
+
+<div class="qr-overlay" id="qrO" onclick="hideQR()">
+  <div class="qr-box" onclick="event.stopPropagation()">
+    <h2>📲 스마트폰 접속</h2>
+    <p id="qrDesc">같은 WiFi의 스마트폰으로 QR 스캔</p>
+    <div id="qrcode"></div>
+    <div class="qr-url" id="qrUrl"></div>
+    <div class="qr-warn" id="qrWarn"></div>
+    <button class="qr-close" onclick="hideQR()">닫기</button>
+  </div>
+</div>
+
+<script>
+/* ===== STOP DEFINITIONS ===== */
+
+// 30 stops, clockwise order starting from 관사33동
+// Stops 0-9: 관사 구역 (출발방향)
+// Stop 10: 방촌문
+// Stops 11-24: 정문/단본부 구역
+// Stops 25-29: 관사 구역 (귀환방향)
+const CW_STOPS = [
+  '관사33동','관사31동','관사3동','관사30동',
+  '11비BOQ','한마음회관','군수사생활관','새마음회관',
+  '군수사BOQ','국궁장입구','방촌문',
+  '110정비중대','110SQ','대공방어대','3식당',
+  '건설장비반','BTL주차장','1정문','방어중대',
+  '2정문','수송대대','항의전대','단본부',
+  '11BX','군수사삼거리','11비BOQ(귀)','관사30동(귀)',
+  '관사3동(귀)','관사31동(귀)','관사33동(귀)'
+];
+
+// Counter-clockwise: 방촌문 → 관사 → 단본부 → 1정문 → 방촌문
+// Uses same physical stops but in reverse order
+const CCW_STOPS = [
+  '방촌문','국궁장입구','군수사BOQ','새마음회관',
+  '군수사생활관','한마음회관','11비BOQ','관사30동',
+  '관사3동','관사31동','관사33동',
+  '관사31동(귀)','관사3동(귀)','관사30동(귀)','11비BOQ(귀)',
+  '군수사삼거리','11BX','단본부','항의전대',
+  '수송대대','2정문','방어중대','1정문',
+  'BTL주차장','건설장비반','3식당','대공방어대',
+  '110SQ','110정비중대','방촌문(귀)'
+];
+
+// Holiday CW: 방촌문 → 정문 → 단본부 → 관사 → 방촌문
+const HCW_STOPS = [
+  '방촌문','110정비중대','110SQ','대공방어대',
+  '3식당','건설장비반','BTL주차장','1정문',
+  '방어중대','2정문','수송대대','항의전대',
+  '단본부','11BX','군수사삼거리','11비BOQ',
+  '관사30동','관사3동','관사31동','관사33동',
+  '관사31동(귀)','관사3동(귀)','관사30동(귀)','한마음회관',
+  '군수사생활관','새마음회관','군수사BOQ','국궁장입구',
+  '방촌문(귀)'
+];
+// 29 stops
+
+// Holiday CCW: same as weekday CCW
+const HCCW_STOPS = CCW_STOPS;
+
+/* ===== TIMING OFFSETS ===== */
+// offsets[i] = minutes after departure to reach stop i
+
+const OFF_CW = [0,1,2,3,4,6,8,9,10,11,13,16,17,18,19,20,21,22,23,25,28,30,31,33,35,37,38,39,40,41];
+const OFF_CCW= [0,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18,19,21,22,24,26,27,29,30,31,32,33,34,38];
+const OFF_HCW= [0,3,4,5,6,7,8,9,10,11,13,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,35];
+const OFF_HCCW=OFF_CCW; // same physical timing
+
+/* ===== ROUTE DEFINITIONS ===== */
+// run: {t:'HH:MM', type:'normal'|'commute'|'extra', label, skip:[indices to null out]}
+// For commute buses that start from a stop other than stop-0,
+// provide skip:[0,1,...,n-1] for stops before their starting point.
+
+const ROUTES = {
+  wd_cw: {
+    stops: CW_STOPS, offsets: OFF_CW,
+    route:'관사33동 → 방촌문 → 1정문 → 단본부 → 관사33동(귀)',
+    runs:[
+      {t:'06:20',type:'normal',label:'1'},
+      {t:'06:50',type:'normal',label:'2'},
+      {t:'07:20',type:'normal',label:'3'},
+      {t:'07:50',type:'normal',label:'4'},
+      {t:'07:15',type:'commute',label:'출근0715',skip:[0,1,2,3,4,5,6,7,8,9]},
+      {t:'07:25',type:'commute',label:'출근0725',skip:[0,1,2,3,4,5,6,7,8,9]},
+      {t:'07:30',type:'commute',label:'출근0730',skip:[0,1,2,3,4,5,6,7,8,9]},
+      {t:'07:35',type:'commute',label:'출근0735',skip:[0,1,2,3,4,5,6,7,8,9]},
+      {t:'07:45',type:'commute',label:'출근0745',skip:[0,1,2,3,4,5,6,7,8,9]},
+      {t:'07:50',type:'commute',label:'출근0750',skip:[0,1,2,3,4,5,6,7,8,9]},
+      {t:'11:00',type:'normal',label:'5',skip:[9]},
+      {t:'11:30',type:'normal',label:'6'},
+      {t:'12:30',type:'normal',label:'7'},
+      {t:'13:30',type:'normal',label:'8'},
+      {t:'15:10',type:'normal',label:'9',skip:[9]},
+      {t:'16:00',type:'normal',label:'10',skip:[9]},
+      {t:'16:50',type:'normal',label:'11'},
+      {t:'17:20',type:'normal',label:'12'},
+      {t:'17:50',type:'normal',label:'13'},
+      {t:'20:10',type:'normal',label:'14'},
+      {t:'20:50',type:'extra',label:'외출',skip:[0,1,2,3,4,5,6,7,8,9]},
+      {t:'20:50',type:'normal',label:'15'},
+      {t:'22:02',type:'normal',label:'16'},
+      {t:'23:22',type:'normal',label:'17'},
+    ]
+  },
+  wd_ccw: {
+    stops: CCW_STOPS, offsets: OFF_CCW,
+    route:'방촌문 → 관사 → 단본부 → 수송대대 → 1정문 → 방촌문',
+    runs:[
+      {t:'06:20',type:'normal',label:'1'},
+      {t:'06:50',type:'normal',label:'2'},
+      {t:'07:15',type:'commute',label:'출근0715',skip:[11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29]},
+      {t:'07:20',type:'normal',label:'3'},
+      {t:'07:25',type:'commute',label:'출근0725',skip:[11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29]},
+      {t:'07:30',type:'commute',label:'출근0730',skip:[11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29]},
+      {t:'07:35',type:'commute',label:'출근0735',skip:[11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29]},
+      {t:'07:40',type:'normal',label:'4'},
+      {t:'07:45',type:'commute',label:'출근0745',skip:[11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29]},
+      {t:'07:50',type:'commute',label:'출근0750',skip:[11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29]},
+      {t:'08:00',type:'normal',label:'5'},
+      {t:'09:42',type:'normal',label:'6',skip:[0]},
+      {t:'10:42',type:'normal',label:'7',skip:[0]},
+      {t:'11:22',type:'normal',label:'8'},
+      {t:'11:50',type:'normal',label:'9'},
+      {t:'12:20',type:'normal',label:'10'},
+      {t:'15:52',type:'normal',label:'11',skip:[0]},
+      {t:'16:42',type:'normal',label:'12',skip:[0]},
+      {t:'17:30',type:'normal',label:'14'},
+      {t:'18:00',type:'normal',label:'15'},
+      {t:'18:50',type:'normal',label:'16'},
+      {t:'20:50',type:'normal',label:'17'},
+      {t:'21:05',type:'extra',label:'외출21:05',skip:[11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29]},
+      {t:'21:40',type:'extra',label:'외출21:40',skip:[11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29]},
+    ]
+  },
+  hd_cw: {
+    stops: HCW_STOPS, offsets: OFF_HCW,
+    route:'방촌문 → 1정문 → 단본부 → 관사 → 방촌문',
+    runs:[
+      {t:'07:50',type:'normal',label:'1'},
+      {t:'10:30',type:'normal',label:'2'},
+      {t:'12:30',type:'normal',label:'3'},
+      {t:'13:30',type:'normal',label:'4'},
+      {t:'14:30',type:'normal',label:'5'},
+      {t:'16:30',type:'normal',label:'6'},
+      {t:'19:55',type:'normal',label:'7'},
+      {t:'21:30',type:'normal',label:'8'},
+      {t:'23:30',type:'normal',label:'9'},
+    ]
+  },
+  hd_ccw: {
+    stops: HCCW_STOPS, offsets: OFF_HCCW,
+    route:'방촌문 → 관사 → 단본부 → 1정문 → 방촌문',
+    runs:[
+      {t:'07:15',type:'normal',label:'1'},
+      {t:'08:25',type:'normal',label:'2'},
+      {t:'09:30',type:'normal',label:'3'},
+      {t:'11:10',type:'normal',label:'4'},
+      {t:'11:30',type:'normal',label:'5'},
+      {t:'13:30',type:'normal',label:'6'},
+      {t:'16:30',type:'normal',label:'7'},
+      {t:'19:30',type:'normal',label:'8'},
+    ]
+  }
+};
+
+/* ===== HELPERS ===== */
+let day='wd', dir='cw';
+const key=()=>`${day}_${dir}`;
+const route=()=>ROUTES[key()];
+
+function toMins(t){const[h,m]=t.split(':').map(Number);return h*60+m}
+function toStr(m){const h=Math.floor(m/60)%24;const mm=m%60;return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0')}
+function nowMins(){const d=new Date();return d.getHours()*60+d.getMinutes()}
+
+// Get times array for a run, with a given stop-0 departure offset
+// For commute buses: t is time at the start stop (earliest non-null stop)
+function getTimes(run, offsets){
+  const skip = run.skip||[];
+  // find the reference stop (first non-skipped)
+  let refIdx = 0;
+  while(skip.includes(refIdx)) refIdx++;
+  const refMins = toMins(run.t);
+  const baseOffset = offsets[refIdx];
+  const baseMins = refMins - baseOffset;
+  return offsets.map((off,i)=>{
+    if(skip.includes(i)) return null;
+    return toStr(baseMins+off);
+  });
+}
+
+/* ===== CONTROLS ===== */
+function setDay(d){
+  day=d;
+  document.querySelectorAll('.day-toggle button').forEach((b,i)=>b.classList.toggle('active',(i===0&&d==='wd')||(i===1&&d==='hd')));
+  updateLabels(); buildSelect(); render();
+}
+function setDir(d){
+  dir=d;
+  document.getElementById('btn-cw').classList.toggle('active',d==='cw');
+  document.getElementById('btn-ccw').classList.toggle('active',d==='ccw');
+  buildSelect(); render();
+}
+function updateLabels(){
+  if(day==='wd'){
+    document.querySelector('#btn-cw span').textContent='관사→방촌문→정문→관사';
+    document.querySelector('#btn-ccw span').textContent='방촌문→관사→정문→방촌문';
+  } else {
+    document.querySelector('#btn-cw span').textContent='방촌문→정문→관사→방촌문';
+    document.querySelector('#btn-ccw span').textContent='방촌문→관사→정문→방촌문';
+  }
+}
+function buildSelect(){
+  const sel=document.getElementById('ss');
+  const prev=parseInt(sel.value)||0;
+  sel.innerHTML='';
+  route().stops.forEach((name,i)=>{
+    const o=document.createElement('option');
+    o.value=i; o.textContent=`${name}`;
+    sel.appendChild(o);
+  });
+  sel.value=Math.min(prev,route().stops.length-1);
+}
+
+/* ===== RENDER ===== */
+function render(){
+  const r=route();
+  document.getElementById('ri').textContent='노선: '+r.route;
+  const myIdx=parseInt(document.getElementById('ss').value)||0;
+  const now=nowMins();
+  const list=document.getElementById('list');
+  list.innerHTML='';
+
+  // separate by type
+  const normals=r.runs.filter(x=>x.type==='normal');
+  const specials=r.runs.filter(x=>x.type!=='normal');
+
+  let nextMarked=false;
+
+  function renderGroup(runs, label){
+    if(!runs.length) return;
+    const lbl=document.createElement('div');
+    lbl.className='sec-label'; lbl.textContent=label;
+    list.appendChild(lbl);
+    runs.forEach(run=>{
+      const times=getTimes(run,r.offsets);
+      const myTime=times[myIdx];
+      if(!myTime) return;
+      const myMins=toMins(myTime);
+      const passed=myMins<now-1;
+      const isNext=!nextMarked&&!passed&&run.type==='normal'&&myMins>=now;
+      if(isNext&&run.type==='normal') nextMarked=true;
+
+      const card=document.createElement('div');
+      card.className='card'+(isNext?' next':'')+(passed?' passed':'');
+
+      const diff=myMins-now;
+      const bClass=run.type==='commute'?'badge cm':run.type==='extra'?'badge ex':'badge';
+
+      card.innerHTML=`
+        <div class="card-top">
+          <span class="${bClass}">${run.label}</span>
+          <span class="dep">${myTime}</span>
+          ${isNext?'<span class="next-pill">다음 버스</span>':''}
+          ${isNext&&diff>0?`<span class="mins">${diff}분 후</span>`:''}
+          ${isNext&&diff===0?'<span class="mins">지금 출발!</span>':''}
+        </div>
+        <div class="stops-row"><div class="stops-inner">
+          ${r.stops.map((name,i)=>{
+            const t=times[i];
+            const isMe=i===myIdx;
+            const dotC=isMe?'st-dot me':(t?'st-dot on':'st-dot skip');
+            const timeC=t?'st-time':(isMe?'st-time':'st-time nil');
+            const ll=i===0?'st-line none':'st-line';
+            const rl=i===r.stops.length-1?'st-line none':'st-line';
+            return `<div class="st">
+              <div class="st-name" title="${name}">${name}</div>
+              <div class="st-row"><div class="${ll}"></div><div class="${dotC}"></div><div class="${rl}"></div></div>
+              <div class="${timeC}">${t||'—'}</div>
+            </div>`;
+          }).join('')}
+        </div></div>`;
+      list.appendChild(card);
+    });
+  }
+
+  if(specials.length) renderGroup(specials,'⭐ 특별 버스 (출근/외출)');
+  renderGroup(normals,'🚌 일반 버스');
+
+  if(!list.querySelector('.card:not(.passed)')){
+    const e=document.createElement('div');
+    e.className='empty'; e.innerHTML='🌙 오늘 남은 버스가 없습니다';
+    list.appendChild(e);
+  }
+}
+
+/* ===== CLOCK ===== */
+function tick(){
+  const n=new Date();
+  const hh=String(n.getHours()).padStart(2,'0');
+  const mm=String(n.getMinutes()).padStart(2,'0');
+  const ss=String(n.getSeconds()).padStart(2,'0');
+  document.getElementById('lt').textContent=`${hh}:${mm}:${ss}`;
+  const days=['일','월','화','수','목','금','토'];
+  document.getElementById('ld').textContent=`${n.getFullYear()}년 ${n.getMonth()+1}월 ${n.getDate()}일 (${days[n.getDay()]})`;
+}
+
+/* ===== QR ===== */
+let qrDone=false;
+function showQR(){
+  document.getElementById('qrO').classList.add('show');
+  const url=window.location.href;
+  document.getElementById('qrUrl').textContent=url;
+  if(url.startsWith('file://')){
+    document.getElementById('qrDesc').innerHTML='⚠️ 로컬 파일입니다.<br><b>서버시작.bat</b> 실행 후 브라우저에서 다시 열어주세요.';
+    document.getElementById('qrWarn').textContent='http://[PC IP]:8080/bus_schedule.html';
+    document.getElementById('qrcode').innerHTML='<div style="padding:20px;color:#ccc;font-size:12px">서버 실행 후 사용 가능</div>';
+    return;
+  }
+  document.getElementById('qrDesc').innerHTML='같은 WiFi 스마트폰으로 QR 스캔';
+  document.getElementById('qrWarn').textContent='';
+  if(!qrDone){
+    document.getElementById('qrcode').innerHTML='';
+    new QRCode(document.getElementById('qrcode'),{text:url,width:200,height:200,colorDark:'#1a3a6b',colorLight:'#ffffff'});
+    qrDone=true;
+  }
+}
+function hideQR(){document.getElementById('qrO').classList.remove('show')}
+
+/* ===== INIT ===== */
+(function(){
+  const wd=new Date().getDay();
+  if(wd===0||wd===6){day='hd';document.querySelectorAll('.day-toggle button')[1].classList.add('active');document.querySelectorAll('.day-toggle button')[0].classList.remove('active')}
+  updateLabels(); buildSelect(); render(); tick();
+  setInterval(tick,1000);
+  setInterval(render,30000);
+})();
+</script>
+</body>
+</html>
