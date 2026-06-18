@@ -250,9 +250,10 @@ function toMins(t){
   return v===0?1440:v;
 }
 function toStr(m){
-  const h=Math.floor(m/60)%24;
+  const h=Math.floor(m/60);
   const mm=m%60;
-  return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+  if(m>=1440) return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+  return String(h%24).padStart(2,'0')+':'+String(mm).padStart(2,'0');
 }
 function nowMins(){const d=new Date();return d.getHours()*60+d.getMinutes();}
 
