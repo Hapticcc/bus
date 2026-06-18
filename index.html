@@ -446,13 +446,12 @@ function hideQR(){document.getElementById('qrO').classList.remove('show');}
   const dd=String(n.getDate()).padStart(2,'0');
   document.getElementById('upd').textContent=`Update: ${yy}.${mo}.${dd}`;
 
-  /* 평일/휴무일 자동 감지 */
+  /* 평일/휴무일 자동 감지: 토(6)/일(0)만 휴무일, 나머지는 평일 */
   const wd=n.getDay();
-  if(wd===0||wd===6){
-    day='hd';
-    document.querySelectorAll('.day-toggle button')[1].classList.add('active');
-    document.querySelectorAll('.day-toggle button')[0].classList.remove('active');
-  }
+  const isHoliday=(wd===0||wd===6);
+  day=isHoliday?'hd':'wd';
+  document.querySelectorAll('.day-toggle button')[0].classList.toggle('active',!isHoliday);
+  document.querySelectorAll('.day-toggle button')[1].classList.toggle('active',isHoliday);
 
   updateLabels(); buildSelect(); render(); tick();
   setInterval(tick,1000);
