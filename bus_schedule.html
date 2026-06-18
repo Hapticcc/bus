@@ -451,10 +451,10 @@ function hideQR(){document.getElementById('qrO').classList.remove('show');}
   const wd=n.getDay();
   const isHoliday=(wd===0||wd===6);
   day=isHoliday?'hd':'wd';
-  document.querySelectorAll('.day-toggle button')[0].classList.toggle('active',!isHoliday);
-  document.querySelectorAll('.day-toggle button')[0].classList.toggle('dimmed',isHoliday);
-  document.querySelectorAll('.day-toggle button')[1].classList.toggle('active',isHoliday);
-  document.querySelectorAll('.day-toggle button')[1].classList.toggle('dimmed',!isHoliday);
+  const btnWd=document.querySelectorAll('.day-toggle button')[0];
+  const btnHd=document.querySelectorAll('.day-toggle button')[1];
+  btnWd.className=isHoliday?'dimmed':'active';
+  btnHd.className=isHoliday?'active':'dimmed';
 
   updateLabels(); buildSelect(); render(); tick();
   setInterval(tick,1000);
