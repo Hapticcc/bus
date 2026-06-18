@@ -340,7 +340,8 @@ function render(){
     const times=getTimes(run,r.offsets);
     const myTime=times[myIdx];
     const myMins=toMins(myTime);
-    const passed=myMins<now-1;
+    const lastMins=toMins(times[times.length-1]);
+    const passed=lastMins<now-1;
     const isNext=!nextMarked&&!passed&&myMins>=now;
     if(isNext) nextMarked=true;
 
