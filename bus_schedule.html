@@ -19,6 +19,7 @@
     .day-toggle{display:flex;background:white;border-bottom:1px solid #e5e7eb}
     .day-toggle button{flex:1;padding:13px 4px;border:none;background:none;font-size:15px;color:#888;cursor:pointer;border-bottom:3px solid transparent;font-weight:500}
     .day-toggle button.active{color:#1a3a6b;border-bottom-color:#1a3a6b;font-weight:700}
+    .day-toggle button.dimmed{opacity:.35;pointer-events:none}
 
     .dir-wrap{padding:12px 14px 4px}
     .dir-toggle{display:flex;background:#e8ecf4;border-radius:10px;padding:4px;gap:4px}
@@ -451,7 +452,9 @@ function hideQR(){document.getElementById('qrO').classList.remove('show');}
   const isHoliday=(wd===0||wd===6);
   day=isHoliday?'hd':'wd';
   document.querySelectorAll('.day-toggle button')[0].classList.toggle('active',!isHoliday);
+  document.querySelectorAll('.day-toggle button')[0].classList.toggle('dimmed',isHoliday);
   document.querySelectorAll('.day-toggle button')[1].classList.toggle('active',isHoliday);
+  document.querySelectorAll('.day-toggle button')[1].classList.toggle('dimmed',!isHoliday);
 
   updateLabels(); buildSelect(); render(); tick();
   setInterval(tick,1000);
